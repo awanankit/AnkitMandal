@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Desk AI</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: #f8fafc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .desktop-ai {
+            width: 420px;
+            background: rgba(15, 23, 42, 0.96);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 18px;
+            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.45);
+            overflow: hidden;
+        }
+        .header {
+            padding: 18px 20px;
+            background: rgba(148, 163, 184, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header .title {
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+        .header .status {
+            font-size: 0.85rem;
+            color: #38bdf8;
+        }
+        .chat-window {
+            padding: 20px;
+            max-height: 420px;
+            overflow-y: auto;
+        }
+        .message {
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+        .message.user {
+            text-align: right;
+        }
+        .message.user .bubble {
+            display: inline-block;
+            background: #2563eb;
+            color: #fff;
+            padding: 12px 14px;
+            border-radius: 18px 18px 6px 18px;
+            max-width: 78%;
+        }
+        .message.ai .bubble {
+            display: inline-block;
+            background: rgba(148, 163, 184, 0.18);
+            color: #e2e8f0;
+            padding: 12px 14px;
+            border-radius: 18px 18px 18px 6px;
+            max-width: 78%;
+        }
+        .input-panel {
+            display: flex;
+            gap: 10px;
+            padding: 16px 20px 24px;
+            background: rgba(15, 23, 42, 0.98);
+        }
+        .input-panel input {
+            flex: 1;
+            padding: 12px 14px;
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            border-radius: 12px;
+            background: #0f172a;
+            color: #f8fafc;
+            outline: none;
+        }
+        .input-panel button {
+            padding: 12px 18px;
+            border: none;
+            border-radius: 12px;
+            background: #3b82f6;
+            color: #fff;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="desktop-ai">
+        <div class="header">
+            <div class="title">Desk AI</div>
+            <div class="status">Ready</div>
+        </div>
+        <div id="chat" class="chat-window">
+            <div class="message ai">
+                <div class="bubble">Hello! I am your desktop AI assistant. Ask me anything.</div>
+            </div>
+        </div>
+        <div class="input-panel">
+            <input id="userInput" type="text" placeholder="Type your question..." />
+            <button id="sendBtn">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const chat = document.getElementById('chat')
+        const input = document.getElementById('userInput')
+        const button = document.getElementById('sendBtn')
+
+        function addMessage(role, text) {
+            const wrapper = document.createElement('div')
+            wrapper.className = 'message ' + role
+            const bubble = document.createElement('div')
+            bubble.className = 'bubble'
+            bubble.textContent = text
+            wrapper.appendChild(bubble)
+            chat.appendChild(wrapper)
+            chat.scrollTop = chat.scrollHeight
+        }
+
+        function getReply(message) {
+            const lower = message.trim().toLowerCase()
+            if (!lower) return 'Please type a question or command.'
+            if (lower.includes('hello') || lower.includes('hi')) return 'Hi there! How can I help you today?'
+            if (lower.includes('time')) return 'The current time is ' + new Date().toLocaleTimeString()
+            if (lower.includes('date')) return 'Today is ' + new Date().toLocaleDateString()
+            if (lower.includes('help')) return 'You can ask me for time, date, a greeting, or just say hello.'
+            return 'I am a simple desk AI demo. I can respond to greetings, time, and date.'
+        }
+
+        function send() {
+            const text = input.value.trim()
+            if (!text) return
+            addMessage('user', text)
+            input.value = ''
+            const reply = getReply(text)
+            setTimeout(() => addMessage('ai', reply), 300)
+        }
+
+        button.addEventListener('click', send)
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') send()
+        })
+    </script>
+</body>
+</html>
