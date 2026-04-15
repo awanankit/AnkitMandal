@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartoon World</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            background: linear-gradient(135deg, #ff6b6b, #feca57, #48dbfb);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            font-size: 3em;
+            color: #ff6b6b;
+            text-shadow: 2px 2px 0px #feca57;
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            color: #666;
+            margin-top: 10px;
+        }
+        
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: scale(1.05) rotate(2deg);
+        }
+        
+        .card-image {
+            height: 200px;
+            background: linear-gradient(45deg, #ff9ff3, #54a0ff, #5f27cd);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 80px;
+        }
+        
+        .card-content {
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .card-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .card-desc {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 20px;
+            color: white;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🎬 Cartoon World</h1>
+        <p class="subtitle">Welcome to the magical world of cartoons!</p>
+    </header>
+    
+    <main class="gallery">
+        <div class="card">
+            <div class="card-image">🐱</div>
+            <div class="card-content">
+                <h3 class="card-title">Tom & Jerry</h3>
+                <p class="card-desc">The classic cat and mouse chase that has entertained generations!</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-image">🦁</div>
+            <div class="card-content">
+                <h3 class="card-title">Mickey Mouse</h3>
+                <p class="card-desc">The beloved mouse who started it all!</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-image">🐕</div>
+            <div class="card-content">
+                <h3 class="card-title">Scooby-Doo</h3>
+                <p class="card-desc">The Great Dane who solves mysteries with his friends!</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-image">🐢</div>
+            <div class="card-content">
+                <h3 class="card-title">Teenage Mutant Ninja Turtles</h3>
+                <p class="card-desc">Heroes in a half shell - pizza power!</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-image">🧙</div>
+            <div class="card-content">
+                <h3 class="card-title">Harry Potter</h3>
+                <p class="card-desc">The boy wizard and his magical adventures at Hogwarts!</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-image">🦕</div>
+            <div class="card-content">
+                <h3 class="card-title">Dinosaur</h3>
+                <p class="card-desc">The adventures of a dinosaur named Dinosaur!</p>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>✨ Enjoy the wonderful world of cartoons! ✨</p>
+    </footer>
+</body>
+</html>
