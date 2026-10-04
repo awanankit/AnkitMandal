@@ -1,34 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>CSS Styles and Colors</title>
-  <link rel="stylesheet" href="style.css">
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Glass Pitcher</title>
+	<style>
+		* { box-sizing: border-box; }
+		body {
+			margin: 0;
+			min-height: 100vh;
+			display: grid;
+			place-items: center;
+			background: radial-gradient(ellipse at 50% 35%, #fffdf6, #e9eee4 75%);
+		}
+		svg { width: min(380px, 90vw); height: auto; filter: drop-shadow(0 18px 18px #5966552b); }
+	</style>
 </head>
 <body>
+	<svg viewBox="0 0 380 440" role="img" aria-labelledby="title description">
+		<title id="title">A glass pitcher filled with water</title>
+		<desc id="description">A transparent pitcher with a curved handle, pouring spout, and blue water.</desc>
+		<defs>
+			<linearGradient id="glass" x1="0" x2="1">
+				<stop stop-color="#8dd2d0" stop-opacity=".58"/>
+				<stop offset=".2" stop-color="#fff" stop-opacity=".25"/>
+				<stop offset=".72" stop-color="#eaffff" stop-opacity=".18"/>
+				<stop offset="1" stop-color="#86c7c6" stop-opacity=".65"/>
+			</linearGradient>
+			<linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+				<stop stop-color="#a8e9e4" stop-opacity=".8"/>
+				<stop offset="1" stop-color="#43aaa9" stop-opacity=".9"/>
+			</linearGradient>
+			<clipPath id="inside">
+				<path d="M112 119h151l-14 237q-61 17-123 0z"/>
+			</clipPath>
+		</defs>
 
-  <div class="container">
+		<ellipse cx="186" cy="385" rx="122" ry="17" fill="#596655" opacity=".16"/>
+		<!-- Handle, behind the pitcher -->
+		<path d="M260 155c73-19 82 27 75 95-6 62-26 83-80 68" fill="none" stroke="#a8d9d7" stroke-width="25" stroke-linecap="round"/>
+		<path d="M260 155c73-19 82 27 75 95-6 62-26 83-80 68" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".9"/>
 
-    <!-- Big background box -->
-    <div class="box blue-box"></div>
+		<!-- Water inside the glass -->
+		<g clip-path="url(#inside)">
+			<path d="M96 238q42-11 84 0t84 0 45-2v145H96z" fill="url(#water)"/>
+			<path d="M96 238q42-11 84 0t84 0 45-2" fill="none" stroke="#f4ffff" stroke-width="3"/>
+			<circle cx="226" cy="275" r="4" fill="#fff" opacity=".75"/>
+			<circle cx="198" cy="307" r="2.5" fill="#fff" opacity=".75"/>
+		</g>
 
-    <!-- Small center box -->
-    <div class="box green-box"></div>
-
-    <!-- Orange border box -->
-    <div class="border-box"></div>
-
-    <!-- Text -->
-    <h1>CSS = Styles <br> and Colors</h1>
-
-    <p class="sub-text">Manipulate Text</p>
-
-    <p class="links">
-      <span class="link-blue">Colors,</span>
-      <span class="link-purple">Boxes</span>
-    </p>
-
-  </div>
-
+		<!-- Pitcher body, including the pointed pouring spout -->
+		<path d="M108 115q0-14 15-14h132q14 0 18 14l43-17q-11 29-43 47l-15 212q-72 23-143 0l-15-207q-8-7-23-19l-13-12q18 9 44-4z"
+					fill="url(#glass)" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
+		<path d="m120 130 13 198" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" opacity=".8"/>
+		<path d="m145 129 7 52m103-35-12 190" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".78"/>
+		<path d="M113 112q76 13 156 0" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+		<path d="M119 367q68 20 136 0" fill="none" stroke="#f4ffff" stroke-width="4" opacity=".9"/>
+	</svg>
 </body>
 </html>

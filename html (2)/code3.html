@@ -1,7 +1,85 @@
 <!DOCTYPE html>
-<html>
-<body style="background-color:powderblue;">
-<h1>This is a heading</h1>
-<p>This is a paragraph.</p>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Little Bloom</title>
+	<style>
+		* { box-sizing: border-box; }
+		body {
+			margin: 0;
+			font-family: Arial, sans-serif;
+			color: #243b35;
+			background: #ff00d4;
+		}
+		header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 20px 8%;
+			background: #ffffff;
+		}
+		.logo { font-size: 1.4rem; font-weight: bold; color: #2f8061; }
+		nav a { margin-left: 22px; color: #243b35; text-decoration: none; }
+		.hero {
+			min-height: 70vh;
+			display: grid;
+			place-items: center;
+			text-align: center;
+			padding: 60px 20px;
+			background: linear-gradient(135deg, #dff5e5, #fff8df);
+		}
+		.hero h1 { margin: 0 0 14px; font-size: clamp(2.4rem, 7vw, 4.5rem); }
+		.hero p { max-width: 520px; margin: 0 auto 28px; line-height: 1.6; }
+		.button {
+			display: inline-block;
+			padding: 13px 24px;
+			border-radius: 30px;
+			background: #2f8061;
+			color: white;
+			text-decoration: none;
+		}
+		.features {
+			display: flex;
+			gap: 20px;
+			justify-content: center;
+			padding: 40px 8%;
+			flex-wrap: wrap;
+		}
+		.card {
+			flex: 1 1 220px;
+			max-width: 300px;
+			padding: 24px;
+			text-align: center;
+			background: white;
+			border-radius: 14px;
+			box-shadow: 0 5px 18px #244b3212;
+		}
+		.card span { font-size: 2rem; }
+		footer { padding: 22px; text-align: center; color: #668077; }
+	</style>
+</head>
+<body>
+	<header>
+		<div class="logo">Little Bloom</div>
+		<nav><a href="#about">About</a><a href="#contact">Contact</a></nav>
+	</header>
+
+	<main>
+		<section class="hero" id="about">
+			<div>
+				<h1>Grow something beautiful.</h1>
+				<p>A small space for fresh ideas, thoughtful design, and everyday inspiration.</p>
+				<a class="button" href="#contact">Say hello</a>
+			</div>
+		</section>
+		<section class="features">
+			<article class="card"><span>🌱</span><h2>Simple</h2><p>Clean ideas that are easy to enjoy.</p></article>
+			<article class="card"><span>☀️</span><h2>Bright</h2><p>Positive energy for your day.</p></article>
+			<article class="card"><span>💚</span><h2>Kind</h2><p>Made with care for people and planet.</p></article>
+		</section>
+	</main>
+
+	<footer id="contact">Made with care · hello@littlebloom.example</footer>
 </body>
 </html>

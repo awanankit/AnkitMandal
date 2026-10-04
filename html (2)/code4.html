@@ -1,16 +1,367 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My first web page</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sky Dodge</title>
+  <style>
+    :root {
+      --bg1: #0f172a;
+      --bg2: #1e3a8a;
+      --panel: rgba(15, 23, 42, 0.7);
+      --text: #e2e8f0;
+      --accent: #38bdf8;
+      --accent2: #22c55e;
+      --danger: #f43f5e;
+      --warning: #fbbf24;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(135deg, var(--bg1), var(--bg2));
+      color: var(--text);
+    }
+
+    .game-shell {
+      width: min(92vw, 520px);
+      background: var(--panel);
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.3);
+      padding: 18px;
+    }
+
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .score-box {
+      display: flex;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .label {
+      color: #cbd5e1;
+      font-size: 12px;
+    }
+
+    .value {
+      color: var(--warning);
+      font-size: 24px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: linear-gradient(#0b1120, #173e63 40%, #1d4e89 100%);
+      border: 2px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      box-shadow: inset 0 0 25px rgba(59, 130, 246, 0.2);
+    }
+
+    .controls {
+      margin-top: 12px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #0f172a;
+      background: linear-gradient(135deg, #7dd3fc, #38bdf8);
+      box-shadow: 0 8px 20px rgba(56, 189, 248, 0.3);
+      transition: transform 0.15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+  </style>
 </head>
 <body>
-    <h1> My first web page </h1>
-    <h2> My first web page </h2>
-    <h3> My first web page </h3>
-    <h4> My first web page </h4>
-    <h5> My first web page </h5>
-    <h6> My first web page </h6>
+  <div class="game-shell">
+    <div class="hud">
+      <div class="score-box">
+        <div>
+          <div class="label">Score</div>
+          <div id="score" class="value">0</div>
+        </div>
+        <div>
+          <div class="label">Time</div>
+          <div id="time" class="value">30</div>
+        </div>
+      </div>
+      <div id="status" class="label">Ready</div>
+    </div>
+
+    <canvas id="gameCanvas" width="480" height="620" aria-label="Sky Dodge game"></canvas>
+
+    <div class="controls">
+      <button id="startBtn">Start / Restart</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const timeEl = document.getElementById('time');
+    const statusEl = document.getElementById('status');
+    const startBtn = document.getElementById('startBtn');
+
+    const keys = {};
+    let gameStarted = false;
+    let gameOver = false;
+    let score = 0;
+    let timeLeft = 30;
+    let lastTime = 0;
+    let spawnTimer = 0;
+
+    const player = {
+      x: canvas.width / 2 - 48,
+      y: canvas.height - 60,
+      width: 96,
+      height: 18,
+      speed: 7
+    };
+
+    const stars = [];
+    const obstacles = [];
+
+    function createStars() {
+      stars.length = 0;
+      for (let i = 0; i < 120; i++) {
+        stars.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          r: Math.random() * 2.2 + 0.8,
+          speed: Math.random() * 0.8 + 0.2
+        });
+      }
+    }
+
+    function resetGame() {
+      gameStarted = true;
+      gameOver = false;
+      score = 0;
+      timeLeft = 30;
+      spawnTimer = 0;
+      player.x = canvas.width / 2 - player.width / 2;
+      obstacles.length = 0;
+      statusEl.textContent = 'Playing';
+      updateHud();
+    }
+
+    function endGame() {
+      gameOver = true;
+      gameStarted = false;
+      statusEl.textContent = 'Game Over';
+      updateHud();
+    }
+
+    function updateHud() {
+      scoreEl.textContent = score;
+      timeEl.textContent = Math.max(0, Math.ceil(timeLeft));
+    }
+
+    function spawnObstacle() {
+      const width = Math.random() * 54 + 36;
+      const height = Math.random() * 22 + 18;
+      obstacles.push({
+        x: Math.random() * (canvas.width - width),
+        y: -height,
+        width,
+        height,
+        speed: Math.random() * 1.8 + 2.5 + score * 0.06
+      });
+    }
+
+    function update(delta) {
+      if (!gameStarted || gameOver) {
+        return;
+      }
+
+      timeLeft -= delta;
+      if (timeLeft <= 0) {
+        timeLeft = 0;
+        endGame();
+      }
+      updateHud();
+
+      if (keys.ArrowLeft || keys.a) {
+        player.x -= player.speed;
+      }
+      if (keys.ArrowRight || keys.d) {
+        player.x += player.speed;
+      }
+      player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+
+      spawnTimer += delta;
+      const spawnDelay = Math.max(0.38, 0.9 - score * 0.02);
+      if (spawnTimer >= spawnDelay) {
+        spawnTimer = 0;
+        spawnObstacle();
+      }
+
+      for (const star of stars) {
+        star.y += star.speed;
+        if (star.y > canvas.height) {
+          star.y = -5;
+          star.x = Math.random() * canvas.width;
+        }
+      }
+
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const block = obstacles[i];
+        block.y += block.speed * (delta * 60);
+
+        const playerRect = {
+          x: player.x,
+          y: player.y,
+          width: player.width,
+          height: player.height
+        };
+
+        const blockRect = {
+          x: block.x,
+          y: block.y,
+          width: block.width,
+          height: block.height
+        };
+
+        if (
+          playerRect.x < blockRect.x + blockRect.width &&
+          playerRect.x + playerRect.width > blockRect.x &&
+          playerRect.y < blockRect.y + blockRect.height &&
+          playerRect.y + playerRect.height > blockRect.y
+        ) {
+          endGame();
+          return;
+        }
+
+        if (block.y > canvas.height) {
+          obstacles.splice(i, 1);
+          score += 1;
+          updateHud();
+        }
+      }
+    }
+
+    function drawBackground() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      for (const star of stars) {
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.25)';
+      ctx.fillRect(0, canvas.height - 34, canvas.width, 34);
+    }
+
+    function drawPlayer() {
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(player.x, player.y, player.width, player.height);
+
+      ctx.fillStyle = '#dbeafe';
+      ctx.fillRect(player.x + 18, player.y - 10, player.width - 36, 8);
+    }
+
+    function drawObstacles() {
+      for (const block of obstacles) {
+        ctx.fillStyle = '#f43f5e';
+        ctx.fillRect(block.x, block.y, block.width, block.height);
+      }
+    }
+
+    function drawMessage() {
+      if (gameStarted) {
+        return;
+      }
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 36px Arial';
+
+      if (gameOver) {
+        ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2 - 16);
+        ctx.font = 'bold 22px Arial';
+        ctx.fillText('Press Start to play again', canvas.width / 2, canvas.height / 2 + 26);
+      } else {
+        ctx.fillText('Sky Dodge', canvas.width / 2, canvas.height / 2 - 18);
+        ctx.font = 'bold 20px Arial';
+        ctx.fillText('Use ← → or A / D to move', canvas.width / 2, canvas.height / 2 + 22);
+      }
+    }
+
+    function gameLoop(timestamp) {
+      const delta = Math.min((timestamp - lastTime) / 1000 || 0.016, 0.032);
+      lastTime = timestamp;
+
+      update(delta);
+      drawBackground();
+      drawPlayer();
+      drawObstacles();
+      drawMessage();
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener('keydown', (event) => {
+      const key = event.key.toLowerCase();
+      keys[event.key] = true;
+      keys[key] = true;
+
+      if (event.code === 'Space') {
+        resetGame();
+      }
+    });
+
+    window.addEventListener('keyup', (event) => {
+      keys[event.key] = false;
+      keys[event.key.toLowerCase()] = false;
+    });
+
+    startBtn.addEventListener('click', resetGame);
+
+    createStars();
+    updateHud();
+    requestAnimationFrame(gameLoop);
+  </script>
 </body>
 </html>
