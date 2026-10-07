@@ -122,6 +122,8 @@
     <div class="hud">
       <div class="badge">Score: <span id="score">0</span></div>
       <div class="badge">Lives: <span id="lives">3</span></div>
+      <div class="badge">Wave: <span id="wave">1</span></div>
+      <div class="badge">Weapon: <span id="weapon">Rifle</span></div>
     </div>
     <canvas id="gameCanvas" width="800" height="500"></canvas>
     <div class="overlay" id="startOverlay">
@@ -145,11 +147,16 @@
     let gameOver = false;
     let score = 0;
     let lives = 5;
+    let wave = 1;
+    let combo = 0;
     let lastTime = 0;
     let spawnTimer = 0;
     let keys = {};
     let mouseX = canvas.width / 2;
     let audioCtx = null;
+
+    const waveEl = document.getElementById('wave');
+    const weaponEl = document.getElementById('weapon');
 
     function ensureAudio() {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -218,6 +225,16 @@
       });
     }
 
+    function playPickupSound() {
+      playTone({
+        frequency: 680,
+        duration: 0.1,
+        type: 'triangle',
+        volume: 0.08,
+        slideTo: 880
+      });
+    }
+
     function playGameOverSound() {
       playTone({
         frequency: 180,
@@ -243,12 +260,17 @@
       width: 96,
       height: 40,
       speed: 8,
-      cooldown: 0
+      cooldown: 0,
+      fireLevel: 1,
+      rapidTimer: 0,
+      shieldTimer: 0
     };
 
     let bullets = [];
     let enemies = [];
     let clouds = [];
+    let pickups = [];
+    let particles = [];
 
     function initClouds() {
       clouds = [];
@@ -266,30 +288,84 @@
       gameOver = false;
       score = 0;
       lives = 5;
+      combo = 0;
       bullets = [];
       enemies = [];
+      pickups = [];
+      particles = [];
       player.x = canvas.width / 2;
       player.y = canvas.height - 50;
       player.cooldown = 0;
+      player.fireLevel = 1;
+      player.rapidTimer = 0;
+      player.shieldTimer = 0;
       spawnTimer = 0;
       updateHud();
       startOverlay.classList.remove('show');
     }
 
     function updateHud() {
+      wave = 1 + Math.floor(score / 120);
       scoreEl.textContent = score;
       livesEl.textContent = lives;
+      waveEl.textContent = wave;
+
+      if (player.shieldTimer > 0) weaponEl.textContent = 'Shield';
+      else if (player.rapidTimer > 0) weaponEl.textContent = 'Rapid';
+      else if (player.fireLevel >= 3) weaponEl.textContent = 'Scatter';
+      else if (player.fireLevel >= 2) weaponEl.textContent = 'Twin';
+      else weaponEl.textContent = 'Rifle';
+    }
+
+    function spawnParticles(x, y, color, count = 10) {
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x,
+          y,
+          vx: (Math.random() - 0.5) * 4,
+          vy: (Math.random() - 0.5) * 4,
+          life: 0.5 + Math.random() * 0.6,
+          color,
+          r: 2 + Math.random() * 3
+        });
+      }
+    }
+
+    function spawnPickup(x, y) {
+      if (Math.random() > 0.22) return;
+      const types = ['rapid', 'shield', 'repair'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      pickups.push({
+        x,
+        y,
+        r: 11,
+        speed: 1.1 + Math.random() * 0.8,
+        drift: (Math.random() - 0.5) * 1.4,
+        type
+      });
     }
 
     function spawnEnemy() {
-      const size = 32 + Math.random() * 18;
+      const difficulty = 1 + score / 120;
+      const roll = Math.random();
+      let type = 'drone';
+      if (roll > 0.82) type = 'tank';
+      else if (roll > 0.52) type = 'zigzag';
+
+      const baseSize = 28 + Math.random() * 22;
+      const width = type === 'tank' ? baseSize * 1.5 : baseSize;
+      const height = type === 'tank' ? baseSize * 1.2 : baseSize * 0.8;
+
       enemies.push({
         x: 30 + Math.random() * (canvas.width - 60),
         y: -35,
-        width: size,
-        height: size * 0.8,
-        speed: 0.9 + Math.random() * 1.2 + score / 220,
-        drift: (Math.random() - 0.5) * 1.1
+        width,
+        height,
+        speed: (type === 'tank' ? 0.8 : 1.1) + Math.random() * 0.9 + difficulty * 0.2,
+        drift: (Math.random() - 0.5) * 1.8,
+        type,
+        hp: type === 'tank' ? 2 : 1,
+        phase: Math.random() * Math.PI * 2
       });
     }
 
@@ -298,9 +374,22 @@
       if (player.cooldown > 0) return;
 
       playShootSound();
-      bullets.push({ x: player.x - 8, y: player.y - 18, r: 5.5, speed: 9 });
-      bullets.push({ x: player.x + 8, y: player.y - 18, r: 5.5, speed: 9 });
-      player.cooldown = 0.14;
+      const offsets = player.fireLevel >= 3 ? [-18, -9, 0, 9, 18] : player.fireLevel >= 2 ? [-10, 0, 10] : [0];
+      const aimX = mouseX !== undefined ? mouseX - player.x : 0;
+      const drift = Math.abs(aimX) > 10 ? Math.sign(aimX) * 0.35 : 0;
+      const quickFire = player.rapidTimer > 0 ? 0.08 : 0.14;
+
+      for (const offset of offsets) {
+        bullets.push({
+          x: player.x + offset,
+          y: player.y - 18,
+          r: 5.5,
+          speed: 10,
+          vx: drift + offset * 0.06,
+          vy: -1
+        });
+      }
+      player.cooldown = quickFire;
     }
 
     function updatePlayer(dt) {
@@ -316,12 +405,63 @@
 
       player.x = Math.max(28, Math.min(canvas.width - 28, player.x));
       player.cooldown = Math.max(0, player.cooldown - dt);
+      player.rapidTimer = Math.max(0, player.rapidTimer - dt);
+      player.shieldTimer = Math.max(0, player.shieldTimer - dt);
+      player.fireLevel = Math.min(3, 1 + Math.floor(score / 140));
     }
 
     function updateBullets(dt) {
       for (let i = bullets.length - 1; i >= 0; i--) {
-        bullets[i].y -= bullets[i].speed * dt * 60;
-        if (bullets[i].y < -20) bullets.splice(i, 1);
+        const bullet = bullets[i];
+        bullet.x += bullet.vx * bullet.speed * dt * 60;
+        bullet.y += bullet.vy * bullet.speed * dt * 60;
+
+        if (bullet.y < -20 || bullet.x < -30 || bullet.x > canvas.width + 30) {
+          bullets.splice(i, 1);
+        }
+      }
+    }
+
+    function updatePickups(dt) {
+      for (let i = pickups.length - 1; i >= 0; i--) {
+        const pickup = pickups[i];
+        pickup.y += pickup.speed * dt * 60;
+        pickup.x += pickup.drift * dt * 60;
+
+        if (pickup.x < 12) pickup.x = 12;
+        if (pickup.x > canvas.width - 12) pickup.x = canvas.width - 12;
+
+        const taken = Math.abs(pickup.x - player.x) < (player.width * 0.4 + pickup.r) &&
+          Math.abs(pickup.y - player.y) < (player.height * 0.5 + pickup.r);
+
+        if (taken) {
+          pickups.splice(i, 1);
+          playPickupSound();
+
+          if (pickup.type === 'rapid') {
+            player.rapidTimer = 7;
+          } else if (pickup.type === 'shield') {
+            player.shieldTimer = 8;
+          } else {
+            lives = Math.min(5, lives + 1);
+          }
+          updateHud();
+          continue;
+        }
+
+        if (pickup.y > canvas.height + 20) {
+          pickups.splice(i, 1);
+        }
+      }
+    }
+
+    function updateParticles(dt) {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx * dt * 60;
+        p.y += p.vy * dt * 60;
+        p.life -= dt;
+        if (p.life <= 0) particles.splice(i, 1);
       }
     }
 
@@ -329,7 +469,12 @@
       for (let i = enemies.length - 1; i >= 0; i--) {
         const enemy = enemies[i];
         enemy.y += enemy.speed * dt * 60;
-        enemy.x += enemy.drift * dt * 60;
+
+        if (enemy.type === 'zigzag') {
+          enemy.x += Math.sin((enemy.phase += dt * 8)) * 1.8;
+        } else {
+          enemy.x += enemy.drift * dt * 60;
+        }
 
         if (enemy.x < 18) enemy.x = 18;
         if (enemy.x > canvas.width - 18) enemy.x = canvas.width - 18;
@@ -337,6 +482,7 @@
         if (enemy.y > canvas.height + enemy.height) {
           enemies.splice(i, 1);
           lives -= 1;
+          combo = 0;
           playHitSound();
           if (lives <= 0) {
             gameOver = true;
@@ -351,7 +497,19 @@
           Math.abs(enemy.y - player.y) < (enemy.height + player.height) * 0.5;
 
         if (hit) {
+          if (player.shieldTimer > 0) {
+            enemies.splice(i, 1);
+            player.shieldTimer = Math.max(0, player.shieldTimer - 2);
+            combo += 1;
+            score += 8;
+            spawnParticles(enemy.x, enemy.y, '#8fe9ff', 18);
+            playHitSound();
+            updateHud();
+            continue;
+          }
+
           enemies.splice(i, 1);
+          combo = 0;
           lives -= 1;
           playHitSound();
           if (lives <= 0) {
@@ -375,9 +533,21 @@
             bullet.y > enemy.y - enemy.height / 2 - 8 &&
             bullet.y < enemy.y + enemy.height / 2 + 8
           ) {
-                  bullets.splice(i, 1);
-            enemies.splice(j, 1);
-            score += 12;
+            bullet.hit = true;
+            enemy.hp -= 1;
+
+            if (enemy.hp <= 0) {
+              enemies.splice(j, 1);
+              score += 12 + wave * 2 + combo;
+              combo += 1;
+              spawnParticles(enemy.x, enemy.y, '#ff8b6b', 16);
+              if (Math.random() < 0.22) spawnPickup(enemy.x, enemy.y);
+            } else {
+              score += 4;
+              spawnParticles(enemy.x, enemy.y, '#ffc857', 8);
+            }
+
+            bullets.splice(i, 1);
             playHitSound();
             updateHud();
             break;
@@ -446,6 +616,14 @@
       const y = player.y;
       const w = player.width;
       const h = player.height;
+
+      if (player.shieldTimer > 0) {
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(119, 226, 255, 0.9)';
+        ctx.lineWidth = 3;
+        ctx.arc(x, y, 52, 0, Math.PI * 2);
+        ctx.stroke();
+      }
 
       ctx.save();
       ctx.translate(x, y);
@@ -548,6 +726,24 @@
       }
     }
 
+    function drawPickups() {
+      for (const pickup of pickups) {
+        ctx.save();
+        ctx.translate(pickup.x, pickup.y);
+        ctx.fillStyle = pickup.type === 'rapid' ? '#ff9f1c' : pickup.type === 'shield' ? '#6ee7ff' : '#95f788';
+        ctx.beginPath();
+        ctx.arc(0, 0, pickup.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#0a1d2d';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(pickup.type[0].toUpperCase(), 0, 1);
+        ctx.restore();
+      }
+    }
+
     function drawEnemies() {
       for (const enemy of enemies) {
         ctx.save();
@@ -576,6 +772,17 @@
       }
     }
 
+    function drawParticles() {
+      for (const p of particles) {
+        ctx.beginPath();
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
     function showOverlay(title, message) {
       const heading = startOverlay.querySelector('h1');
       const para = startOverlay.querySelector('p');
@@ -592,9 +799,11 @@
         updateClouds();
         updatePlayer(dt);
         updateBullets(dt);
+        updatePickups(dt);
+        updateParticles(dt);
         spawnTimer += dt;
 
-        if (spawnTimer > Math.max(0.9, 1.45 - score / 260)) {
+        if (spawnTimer > Math.max(0.7, 1.2 - score / 260)) {
           spawnTimer = 0;
           spawnEnemy();
         }
@@ -606,7 +815,9 @@
       drawBackground();
       drawPlayer();
       drawBullets();
+      drawPickups();
       drawEnemies();
+      drawParticles();
 
       requestAnimationFrame(gameLoop);
     }
@@ -652,7 +863,8 @@
     });
 
     initClouds();
-    showOverlay('Air Striker', 'Move with A/D or mouse. Press Space to shoot. Survive the enemy wave!');
+    updateHud();
+    showOverlay('Air Striker', 'Move with A/D or mouse. Press Space to shoot. Survive the enemy wave! Power-ups: rapid fire, shield, repair.');
     requestAnimationFrame(gameLoop);
   </script>
 </body>
