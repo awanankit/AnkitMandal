@@ -151,9 +151,9 @@
     let mouseX = canvas.width / 2;
     let audioCtx = null;
 
-    function playShootSound() {
+    function ensureAudio() {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
+      if (!AudioCtx) return null;
 
       if (!audioCtx) {
         audioCtx = new AudioCtx();
@@ -163,29 +163,85 @@
         audioCtx.resume();
       }
 
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
+      return audioCtx;
+    }
 
-      oscillator.type = 'square';
-      oscillator.frequency.setValueAtTime(360, audioCtx.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(180, audioCtx.currentTime + 0.09);
+    function playTone({
+      frequency = 440,
+      duration = 0.12,
+      type = 'square',
+      volume = 0.08,
+      slideTo = null,
+      attack = 0.01,
+      startAt = 0
+    } = {}) {
+      const ctxAudio = ensureAudio();
+      if (!ctxAudio) return;
 
-      gainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.08, audioCtx.currentTime + 0.02);
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.12);
+      const oscillator = ctxAudio.createOscillator();
+      const gainNode = ctxAudio.createGain();
+
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, ctxAudio.currentTime + startAt);
+      if (slideTo) {
+        oscillator.frequency.exponentialRampToValueAtTime(slideTo, ctxAudio.currentTime + startAt + duration);
+      }
+
+      gainNode.gain.setValueAtTime(0.0001, ctxAudio.currentTime + startAt);
+      gainNode.gain.exponentialRampToValueAtTime(volume, ctxAudio.currentTime + startAt + attack);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, ctxAudio.currentTime + startAt + duration);
 
       oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
+      gainNode.connect(ctxAudio.destination);
 
-      oscillator.start();
-      oscillator.stop(audioCtx.currentTime + 0.12);
+      oscillator.start(ctxAudio.currentTime + startAt);
+      oscillator.stop(ctxAudio.currentTime + startAt + duration + 0.05);
+    }
+
+    function playShootSound() {
+      playTone({
+        frequency: 360,
+        duration: 0.11,
+        type: 'square',
+        volume: 0.07,
+        slideTo: 180
+      });
+    }
+
+    function playHitSound() {
+      playTone({
+        frequency: 220,
+        duration: 0.12,
+        type: 'triangle',
+        volume: 0.06,
+        slideTo: 110
+      });
+    }
+
+    function playGameOverSound() {
+      playTone({
+        frequency: 180,
+        duration: 0.22,
+        type: 'sawtooth',
+        volume: 0.07,
+        slideTo: 70
+      });
+      setTimeout(() => {
+        playTone({
+          frequency: 110,
+          duration: 0.28,
+          type: 'sawtooth',
+          volume: 0.06,
+          slideTo: 45
+        });
+      }, 120);
     }
 
     const player = {
       x: canvas.width / 2,
       y: canvas.height - 50,
-      width: 86,
-      height: 34,
+      width: 96,
+      height: 40,
       speed: 8,
       cooldown: 0
     };
@@ -281,8 +337,10 @@
         if (enemy.y > canvas.height + enemy.height) {
           enemies.splice(i, 1);
           lives -= 1;
+          playHitSound();
           if (lives <= 0) {
             gameOver = true;
+            playGameOverSound();
             showOverlay('Game Over', 'Final score: ' + score + ' — Tap to restart');
           }
           updateHud();
@@ -295,8 +353,10 @@
         if (hit) {
           enemies.splice(i, 1);
           lives -= 1;
+          playHitSound();
           if (lives <= 0) {
             gameOver = true;
+            playGameOverSound();
             showOverlay('Game Over', 'Final score: ' + score + ' — Tap to restart');
           }
           updateHud();
@@ -315,9 +375,10 @@
             bullet.y > enemy.y - enemy.height / 2 - 8 &&
             bullet.y < enemy.y + enemy.height / 2 + 8
           ) {
-            bullets.splice(i, 1);
+                  bullets.splice(i, 1);
             enemies.splice(j, 1);
             score += 12;
+            playHitSound();
             updateHud();
             break;
           }
@@ -389,87 +450,86 @@
       ctx.save();
       ctx.translate(x, y);
 
-      ctx.fillStyle = 'rgba(98, 175, 255, 0.28)';
+      ctx.fillStyle = 'rgba(18, 38, 70, 0.26)';
       ctx.beginPath();
-      ctx.ellipse(0, 18, 32, 14, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 18, 36, 16, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = '#c8ecff';
+      ctx.fillStyle = '#ff7b54';
       ctx.beginPath();
-      ctx.moveTo(-w * 0.18, 0);
-      ctx.lineTo(-w * 0.42, h * 0.8);
-      ctx.lineTo(-w * 0.18, h * 0.66);
-      ctx.lineTo(w * 0.18, h * 0.66);
-      ctx.lineTo(w * 0.42, h * 0.8);
-      ctx.lineTo(w * 0.18, 0);
+      ctx.moveTo(-w * 0.52, 0);
+      ctx.lineTo(-w * 0.18, -h * 0.15);
+      ctx.lineTo(w * 0.2, -h * 0.75);
+      ctx.lineTo(w * 0.62, -h * 0.18);
+      ctx.lineTo(w * 0.36, h * 0.62);
+      ctx.lineTo(-w * 0.32, h * 0.72);
+      ctx.lineTo(-w * 0.66, h * 0.12);
       ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = '#0f274d';
+      ctx.fillStyle = '#0d1d35';
       ctx.beginPath();
-      ctx.moveTo(-w * 0.16, -h * 0.5);
-      ctx.lineTo(w * 0.12, -h * 0.5);
-      ctx.lineTo(w * 0.52, 0);
-      ctx.lineTo(w * 0.18, h * 0.46);
-      ctx.lineTo(-w * 0.18, h * 0.46);
-      ctx.lineTo(-w * 0.52, 0);
+      ctx.moveTo(-w * 0.18, -h * 0.12);
+      ctx.lineTo(w * 0.16, -h * 0.36);
+      ctx.lineTo(w * 0.52, -h * 0.08);
+      ctx.lineTo(w * 0.18, h * 0.38);
+      ctx.lineTo(-w * 0.12, h * 0.38);
+      ctx.lineTo(-w * 0.46, -h * 0.02);
       ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = '#1b5fb8';
+      ctx.fillStyle = '#8ed9ff';
       ctx.beginPath();
-      ctx.moveTo(-w * 0.06, -h * 0.34);
-      ctx.lineTo(w * 0.44, -h * 0.06);
-      ctx.lineTo(w * 0.28, h * 0.18);
-      ctx.lineTo(-w * 0.15, h * 0.18);
-      ctx.lineTo(-w * 0.37, -h * 0.06);
+      ctx.moveTo(-w * 0.08, -h * 0.18);
+      ctx.lineTo(w * 0.32, -h * 0.12);
+      ctx.lineTo(w * 0.22, h * 0.08);
+      ctx.lineTo(-w * 0.06, h * 0.08);
       ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = '#a5d9ff';
+      ctx.fillStyle = '#122a4d';
+      ctx.fillRect(-w * 0.28, -h * 0.08, w * 0.18, h * 0.38);
+      ctx.fillRect(w * 0.1, -h * 0.08, w * 0.18, h * 0.38);
+
+      ctx.fillStyle = '#ffd166';
+      ctx.fillRect(-7, -h * 0.76, 14, 18);
+
+      ctx.fillStyle = '#ff5b57';
       ctx.beginPath();
-      ctx.moveTo(-w * 0.12, -h * 0.12);
-      ctx.lineTo(w * 0.12, -h * 0.12);
-      ctx.lineTo(w * 0.08, h * 0.08);
-      ctx.lineTo(-w * 0.08, h * 0.08);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = '#0b1020';
-      ctx.fillRect(-w * 0.26, -h * 0.08, w * 0.16, h * 0.4);
-      ctx.fillRect(w * 0.1, -h * 0.08, w * 0.16, h * 0.4);
-
-      ctx.fillStyle = '#f9d55c';
-      ctx.fillRect(-6, -h * 0.7, 12, 16);
-
-      ctx.fillStyle = '#ff5f7d';
-      ctx.beginPath();
-      ctx.moveTo(-w * 0.44, 0);
-      ctx.lineTo(-w * 0.62, h * 0.18);
-      ctx.lineTo(-w * 0.46, h * 0.25);
-      ctx.lineTo(-w * 0.28, 0);
+      ctx.moveTo(-w * 0.62, -0.06);
+      ctx.lineTo(-w * 0.82, h * 0.16);
+      ctx.lineTo(-w * 0.5, h * 0.3);
+      ctx.lineTo(-w * 0.2, 0);
       ctx.closePath();
       ctx.fill();
 
       ctx.beginPath();
-      ctx.moveTo(w * 0.44, 0);
-      ctx.lineTo(w * 0.62, h * 0.18);
-      ctx.lineTo(w * 0.46, h * 0.25);
-      ctx.lineTo(w * 0.28, 0);
+      ctx.moveTo(w * 0.62, -0.06);
+      ctx.lineTo(w * 0.82, h * 0.16);
+      ctx.lineTo(w * 0.5, h * 0.3);
+      ctx.lineTo(w * 0.2, 0);
       ctx.closePath();
       ctx.fill();
 
       ctx.fillStyle = '#ffb703';
       ctx.beginPath();
-      ctx.moveTo(-6, h * 0.42);
-      ctx.lineTo(0, h * 0.88);
-      ctx.lineTo(6, h * 0.42);
+      ctx.moveTo(-8, h * 0.58);
+      ctx.lineTo(0, h * 0.98);
+      ctx.lineTo(8, h * 0.58);
       ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fillRect(-w * 0.24, -h * 0.04, 10, 10);
-      ctx.fillRect(w * 0.14, -h * 0.04, 10, 10);
+      ctx.fillStyle = '#fefefe';
+      ctx.fillRect(-w * 0.18, -h * 0.12, 10, 10);
+      ctx.fillRect(w * 0.08, -h * 0.12, 10, 10);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.22, -h * 0.3);
+      ctx.lineTo(0, -h * 0.58);
+      ctx.lineTo(w * 0.22, -h * 0.3);
+      ctx.stroke();
 
       ctx.restore();
     }
@@ -554,6 +614,13 @@
     function startGame() {
       resetGame();
       gameStarted = true;
+      playTone({
+        frequency: 520,
+        duration: 0.14,
+        type: 'triangle',
+        volume: 0.06,
+        slideTo: 720
+      });
       startOverlay.classList.remove('show');
     }
 
