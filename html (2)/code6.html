@@ -3,36 +3,89 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Air Striker</title>
+  <title>AIR STRIKER</title>
   <style>
+    :root {
+      --bg-1: #040b17;
+      --bg-2: #0d1528;
+      --glass: rgba(11, 18, 30, 0.56);
+      --glass-strong: rgba(14, 24, 40, 0.72);
+      --line: rgba(159, 220, 255, 0.32);
+      --cyan: #7ce3ff;
+      --sky: #a7f0ff;
+      --violet: #8075ff;
+      --pink: #ff8ad9;
+      --amber: #ffb703;
+      --orange: #ff7d3d;
+      --text: #eefaff;
+      --muted: #cfe4ff;
+    }
+
     * { box-sizing: border-box; }
-    body {
+
+    html, body {
       margin: 0;
+      min-height: 100%;
+    }
+
+    body {
       min-height: 100vh;
       display: grid;
       place-items: center;
-      background: radial-gradient(circle at top, #140f35 0%, #090d1d 45%, #040912 100%);
-      font-family: Arial, sans-serif;
-      color: white;
+      background:
+        radial-gradient(circle at top, rgba(125, 90, 255, 0.46), transparent 28%),
+        radial-gradient(circle at bottom left, rgba(116, 214, 255, 0.18), transparent 24%),
+        linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 36%, #020711 100%);
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: var(--text);
+      letter-spacing: 0.02em;
     }
 
     .game-wrap {
       position: relative;
       width: 820px;
       max-width: 92vw;
-      border: 3px solid rgba(255,255,255,0.18);
-      border-radius: 18px;
+      border-radius: 24px;
       overflow: hidden;
-      box-shadow: 0 24px 70px rgba(0,0,0,0.52), inset 0 0 35px rgba(122, 205, 255, 0.16);
-      background: #0c1325;
+      background: rgba(7, 16, 26, 0.82);
+      border: 1px solid var(--line);
+      box-shadow:
+        0 28px 90px rgba(0, 0, 0, 0.72),
+        0 0 0 1px rgba(124, 200, 255, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      isolation: isolate;
+    }
+
+    .game-wrap::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      background: linear-gradient(135deg, rgba(124, 227, 255, 0.8), rgba(128, 117, 255, 0.38), rgba(255, 125, 61, 0.32), rgba(124, 227, 255, 0.75));
+      filter: blur(28px);
+      opacity: 0.8;
+      z-index: -2;
+    }
+
+    .game-wrap::after {
+      content: "";
+      position: absolute;
+      inset: 11px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.01));
+      border: 1px solid rgba(255,255,255,0.05);
+      pointer-events: none;
+      z-index: 0;
     }
 
     canvas {
+      position: relative;
       display: block;
       width: 100%;
       height: auto;
-      background: linear-gradient(#75d6ff 0%, #bfefff 34%, #ecfbff 100%);
-      border-radius: 12px;
+      background: linear-gradient(180deg, #6cd4ff 0%, #a9ebff 28%, #ecfbff 100%);
+      border-radius: 16px;
+      box-shadow: inset 0 0 50px rgba(58, 121, 214, 0.16);
+      z-index: 1;
     }
 
     .hud {
@@ -42,21 +95,36 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 14px 18px;
+      padding: 14px 16px;
       pointer-events: none;
-      font-weight: bold;
-      letter-spacing: 1px;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.4);
-      z-index: 2;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.48);
+      z-index: 3;
+      gap: 8px;
     }
 
     .badge {
-      background: rgba(10, 20, 32, 0.42);
-      border: 1px solid rgba(255,255,255,0.2);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(8, 17, 30, 0.42);
+      border: 1px solid rgba(255,255,255,0.14);
       padding: 9px 14px;
       border-radius: 999px;
-      backdrop-filter: blur(6px);
-      box-shadow: inset 0 0 16px rgba(255,255,255,0.08);
+      backdrop-filter: blur(14px) saturate(1.25);
+      -webkit-backdrop-filter: blur(14px) saturate(1.25);
+      box-shadow: 0 12px 22px rgba(8, 13, 25, 0.18), inset 0 1px 0 rgba(255,255,255,0.08);
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .badge span {
+      color: #ffffff;
+      font-size: 0.94rem;
+      letter-spacing: 0.04em;
+      text-transform: none;
     }
 
     .overlay {
@@ -64,10 +132,12 @@
       inset: 0;
       display: none;
       place-items: center;
-      background: linear-gradient(180deg, rgba(7, 14, 26, 0.6), rgba(7, 14, 26, 0.82));
+      background:
+        linear-gradient(180deg, rgba(6, 13, 23, 0.5), rgba(12, 20, 35, 0.8)),
+        radial-gradient(circle at 50% 20%, rgba(124, 227, 255, 0.12), transparent 38%);
       text-align: center;
       padding: 20px;
-      z-index: 3;
+      z-index: 4;
     }
 
     .overlay.show {
@@ -75,45 +145,71 @@
     }
 
     .overlay > div {
-      background: rgba(14, 25, 42, 0.48);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 20px;
-      padding: 28px 30px;
-      box-shadow: 0 14px 30px rgba(0,0,0,0.25);
-      backdrop-filter: blur(8px);
+      position: relative;
+      background: rgba(11, 20, 34, 0.56);
+      border: 1px solid rgba(149, 214, 255, 0.22);
+      border-radius: 26px;
+      padding: 30px 32px;
+      box-shadow:
+        0 22px 40px rgba(0,0,0,0.4),
+        inset 0 0 18px rgba(122, 180, 255, 0.08),
+        0 0 0 1px rgba(255,255,255,0.04);
+      backdrop-filter: blur(12px) saturate(1.2);
+      -webkit-backdrop-filter: blur(12px) saturate(1.2);
+    }
+
+    .overlay > div::before {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.04);
+      pointer-events: none;
     }
 
     .overlay h1 {
-      margin: 0 0 10px;
-      font-size: clamp(2rem, 4vw, 3rem);
-      letter-spacing: 1px;
-      text-shadow: 0 2px 18px rgba(97, 187, 255, 0.6);
+      margin: 0 0 12px;
+      font-size: clamp(2.1rem, 4vw, 3.2rem);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-shadow: 0 0 18px rgba(124, 191, 255, 0.85);
     }
 
     .overlay p {
-      margin: 0 0 20px;
-      color: #dcecff;
-      font-size: 1.05rem;
-      max-width: 420px;
-      line-height: 1.5;
+      margin: 0 auto 22px;
+      color: var(--muted);
+      font-size: 1.06rem;
+      max-width: 440px;
+      line-height: 1.6;
     }
 
     button {
-      border: none;
+      border: 1px solid rgba(255,255,255,0.3);
       border-radius: 999px;
-      padding: 12px 24px;
-      font-size: 1rem;
-      font-weight: bold;
+      padding: 13px 30px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
       cursor: pointer;
-      background: linear-gradient(135deg, #ffca3a, #ff8e3c);
-      color: #fff;
-      box-shadow: 0 12px 24px rgba(255, 142, 60, 0.38);
-      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      color: #08131d;
+      background: linear-gradient(135deg, #84f0ff 0%, #77b3ff 20%, #8b7dff 52%, #ffb054 100%);
+      box-shadow:
+        0 16px 30px rgba(109, 133, 255, 0.38),
+        0 10px 20px rgba(255, 124, 73, 0.2);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
     }
 
     button:hover {
-      transform: translateY(-2px) scale(1.02);
-      box-shadow: 0 18px 30px rgba(255, 142, 60, 0.45);
+      transform: translateY(-2px) scale(1.03);
+      box-shadow:
+        0 20px 36px rgba(118, 140, 255, 0.46),
+        0 12px 28px rgba(255, 124, 73, 0.32);
+      filter: saturate(1.12);
+    }
+
+    button:active {
+      transform: translateY(0) scale(0.99);
     }
   </style>
 </head>
@@ -128,9 +224,9 @@
     <canvas id="gameCanvas" width="800" height="500"></canvas>
     <div class="overlay" id="startOverlay">
       <div>
-        <h1>Air Striker</h1>
+        <h1>AIR STRIKER</h1>
         <p>Move with A/D or mouse. Press Space to shoot. Survive the enemy wave!</p>
-        <button id="startBtn">Start Game</button>
+        <button id="startBtn">Launch</button>
       </div>
     </div>
   </div>
@@ -274,12 +370,13 @@
 
     function initClouds() {
       clouds = [];
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 80; i++) {
         clouds.push({
           x: Math.random() * canvas.width,
-          y: 30 + Math.random() * canvas.height * 0.5,
-          r: 18 + Math.random() * 24,
-          speed: 0.4 + Math.random() * 0.7
+          y: 20 + Math.random() * canvas.height * 0.9,
+          r: 1 + Math.random() * 2.2,
+          speed: 0.2 + Math.random() * 0.7,
+          alpha: 0.2 + Math.random() * 0.8
         });
       }
     }
@@ -487,7 +584,7 @@
           if (lives <= 0) {
             gameOver = true;
             playGameOverSound();
-            showOverlay('Game Over', 'Final score: ' + score + ' — Tap to restart');
+            showOverlay('AIR STRIKER', 'Final score: ' + score + ' — Tap to restart');
           }
           updateHud();
           continue;
@@ -515,7 +612,7 @@
           if (lives <= 0) {
             gameOver = true;
             playGameOverSound();
-            showOverlay('Game Over', 'Final score: ' + score + ' — Tap to restart');
+            showOverlay('AIR STRIKER', 'Final score: ' + score + ' — Tap to restart');
           }
           updateHud();
         }
@@ -566,47 +663,29 @@
     function drawBackground() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      sky.addColorStop(0, '#7ad8ff');
-      sky.addColorStop(0.48, '#d8f6ff');
-      sky.addColorStop(1, '#eefcff');
-      ctx.fillStyle = sky;
+      const space = ctx.createRadialGradient(canvas.width * 0.5, canvas.height * 0.35, 40, canvas.width * 0.5, canvas.height * 0.4, canvas.width * 0.95);
+      space.addColorStop(0, '#132b59');
+      space.addColorStop(0.35, '#0b1630');
+      space.addColorStop(1, '#020812');
+      ctx.fillStyle = space;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      const sunGlow = ctx.createRadialGradient(canvas.width - 120, 90, 15, canvas.width - 120, 90, 120);
-      sunGlow.addColorStop(0, 'rgba(255,247,180,0.9)');
-      sunGlow.addColorStop(0.4, 'rgba(255,214,102,0.45)');
-      sunGlow.addColorStop(1, 'rgba(255,214,102,0)');
-      ctx.fillStyle = sunGlow;
-      ctx.fillRect(canvas.width - 220, 0, 220, 220);
+      const nebula = ctx.createRadialGradient(canvas.width * 0.75, canvas.height * 0.2, 10, canvas.width * 0.75, canvas.height * 0.2, 180);
+      nebula.addColorStop(0, 'rgba(173, 112, 255, 0.38)');
+      nebula.addColorStop(0.5, 'rgba(94, 132, 255, 0.15)');
+      nebula.addColorStop(1, 'rgba(94, 132, 255, 0)');
+      ctx.fillStyle = nebula;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      ctx.fillStyle = '#ffe98a';
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
       ctx.beginPath();
-      ctx.arc(canvas.width - 120, 90, 34, 0, Math.PI * 2);
+      ctx.arc(canvas.width * 0.8, canvas.height * 0.22, 22, 0, Math.PI * 2);
       ctx.fill();
-
-      ctx.fillStyle = '#9ad9b4';
-      ctx.beginPath();
-      ctx.moveTo(0, canvas.height - 60);
-      ctx.lineTo(180, canvas.height - 160);
-      ctx.lineTo(350, canvas.height - 80);
-      ctx.lineTo(520, canvas.height - 170);
-      ctx.lineTo(680, canvas.height - 90);
-      ctx.lineTo(canvas.width, canvas.height - 140);
-      ctx.lineTo(canvas.width, canvas.height);
-      ctx.lineTo(0, canvas.height);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = '#7ec870';
-      ctx.fillRect(0, canvas.height - 22, canvas.width, 22);
 
       for (const cloud of clouds) {
         ctx.beginPath();
-        ctx.fillStyle = 'rgba(255,255,255,0.82)';
+        ctx.fillStyle = `rgba(255,255,255,${cloud.alpha})`;
         ctx.arc(cloud.x, cloud.y, cloud.r, 0, Math.PI * 2);
-        ctx.arc(cloud.x + cloud.r * 0.8, cloud.y + 6, cloud.r * 0.9, 0, Math.PI * 2);
-        ctx.arc(cloud.x - cloud.r * 0.8, cloud.y + 4, cloud.r * 0.75, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -864,7 +943,7 @@
 
     initClouds();
     updateHud();
-    showOverlay('Air Striker', 'Move with A/D or mouse. Press Space to shoot. Survive the enemy wave! Power-ups: rapid fire, shield, repair.');
+    showOverlay('AIR STRIKER', 'Move with A/D or mouse. Press Space to shoot. Survive the enemy wave! Power-ups: rapid fire, shield, repair.');
     requestAnimationFrame(gameLoop);
   </script>
 </body>
