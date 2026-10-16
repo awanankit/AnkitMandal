@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Hole Rush</title>
+	<style>
+		* { box-sizing: border-box; }
+		body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #101426; color: #f4f6ff; font: 16px system-ui, sans-serif; }
+		main { width: min(94vw, 850px); }
+		header { display: flex; align-items: center; justify-content: space-between; margin: 0 4px 12px; }
+		h1 { margin: 0; font-size: clamp(22px, 5vw, 34px); }
+		.stats { display: flex; gap: 8px; align-items: center; font-weight: 700; }
+		.stats span { color: #9ee9ff; min-width: 24px; }
+		canvas { display: block; width: 100%; border: 2px solid #353d60; border-radius: 16px; background: #202846; box-shadow: 0 18px 55px #0008; touch-action: none; cursor: crosshair; }
+		.hint { margin: 10px 4px; color: #b9c1dc; text-align: center; font-size: 14px; }
+		#overlay { position: fixed; inset: 0; display: grid; place-items: center; background: #080b16b8; }
+		#overlay.hidden { display: none; }
+		.card { width: min(90vw, 390px); padding: 28px; text-align: center; border: 1px solid #53608c; border-radius: 20px; background: #1b2340; box-shadow: 0 20px 70px #0009; }
+		.card h2 { margin: 0 0 8px; font-size: 30px; }
+		.card p { color: #c3cbe3; line-height: 1.5; }
+		button { border: 0; border-radius: 10px; padding: 12px 24px; color: #101426; background: #9ee9ff; font: inherit; font-weight: 800; cursor: pointer; }
+		button:hover { background: #c2f2ff; }
+	</style>
+</head>
+<body>
+	<main>
+		<header><h1>🕳️ Hole Rush</h1><div class="stats">Score: <span id="score">0</span> Time: <span id="timer">30</span>s</div></header>
+		<canvas id="board" width="850" height="540" aria-label="Move the hole to swallow objects"></canvas>
+		<p class="hint">Move your mouse or finger to guide the hole. Swallow objects smaller than you before time runs out!</p>
+	</main>
+	<div id="overlay"><section class="card"><h2 id="title">Hole Rush</h2><p id="message">Swallow as many objects as you can in 30 seconds. Start small, then grow big!</p><button id="start">Play</button></section></div>
+	<script>
+		const canvas = document.getElementById('board');
+		const ctx = canvas.getContext('2d');
+		const scoreEl = document.getElementById('score');
+		const timerEl = document.getElementById('timer');
+		const overlay = document.getElementById('overlay');
+		const colors = ['#ffca6a', '#ff718b', '#85e0c1', '#83a7ff', '#d59aff', '#f5f3a4'];
+		let items = [];
+		let hole = { x: 425, y: 270, tx: 425, ty: 270, r: 19 };
+		let score = 0, timeLeft = 30, playing = false, previousTime = 0, spawnTime = 0;
+
+		function addItem() {
+			const r = 8 + Math.random() * 20;
+			items.push({ x: 20 + Math.random() * 810, y: 20 + Math.random() * 500, r, color: colors[Math.floor(Math.random() * colors.length)], square: Math.random() < 0.35 });
+		}
+		function aim(event) {
+			const rect = canvas.getBoundingClientRect();
+			hole.tx = (event.clientX - rect.left) * canvas.width / rect.width;
+			hole.ty = (event.clientY - rect.top) * canvas.height / rect.height;
+		}
+		canvas.addEventListener('pointermove', aim);
+		canvas.addEventListener('pointerdown', aim);
+
+		function draw() {
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			ctx.fillStyle = '#ffffff0b';
+			for (let x = 0; x < canvas.width; x += 35) for (let y = 0; y < canvas.height; y += 35) {
+				ctx.beginPath(); ctx.arc(x, y, 1.3, 0, Math.PI * 2); ctx.fill();
+			}
+			for (const item of items) {
+				ctx.fillStyle = item.color;
+				if (item.square) {
+					ctx.beginPath(); ctx.roundRect(item.x - item.r, item.y - item.r, item.r * 2, item.r * 2, 5); ctx.fill();
+				} else {
+					ctx.beginPath(); ctx.arc(item.x, item.y, item.r, 0, Math.PI * 2); ctx.fill();
+				}
+				ctx.fillStyle = '#ffffff88'; ctx.beginPath(); ctx.arc(item.x - item.r * 0.28, item.y - item.r * 0.3, Math.max(1.5, item.r * 0.12), 0, Math.PI * 2); ctx.fill();
+			}
+			const gradient = ctx.createRadialGradient(hole.x - hole.r * 0.25, hole.y - hole.r * 0.3, 1, hole.x, hole.y, hole.r * 1.2);
+			gradient.addColorStop(0, '#070a12'); gradient.addColorStop(0.8, '#050711'); gradient.addColorStop(1, '#36405f');
+			ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(hole.x, hole.y, hole.r, 0, Math.PI * 2); ctx.fill();
+			ctx.strokeStyle = '#7783a8'; ctx.lineWidth = 2; ctx.stroke();
+		}
+		function endGame() {
+			playing = false;
+			document.getElementById('title').textContent = "Time's up!";
+			document.getElementById('message').textContent = `You swallowed ${score} object${score === 1 ? '' : 's'}. Want another round?`;
+			document.getElementById('start').textContent = 'Play again';
+			overlay.classList.remove('hidden');
+		}
+		function frame(now) {
+			if (!playing) return;
+			const dt = Math.min((now - previousTime) / 1000, 0.05);
+			previousTime = now;
+			timeLeft -= dt;
+			if (timeLeft <= 0) {
+				timeLeft = 0; timerEl.textContent = '0'; draw(); endGame(); return;
+			}
+			timerEl.textContent = Math.ceil(timeLeft);
+			hole.x += (hole.tx - hole.x) * Math.min(1, dt * 9);
+			hole.y += (hole.ty - hole.y) * Math.min(1, dt * 9);
+			hole.x = Math.max(hole.r, Math.min(canvas.width - hole.r, hole.x));
+			hole.y = Math.max(hole.r, Math.min(canvas.height - hole.r, hole.y));
+			for (let i = items.length - 1; i >= 0; i--) {
+				const item = items[i];
+				if (Math.hypot(item.x - hole.x, item.y - hole.y) < hole.r + item.r * 0.35 && item.r < hole.r * 1.35) {
+					items.splice(i, 1); score++; scoreEl.textContent = score; hole.r = Math.min(58, hole.r + 1.1);
+				}
+			}
+			spawnTime += dt;
+			if (spawnTime > 0.7 && items.length < 48) { addItem(); spawnTime = 0; }
+			draw();
+			requestAnimationFrame(frame);
+		}
+		document.getElementById('start').addEventListener('click', () => {
+			score = 0; timeLeft = 30; spawnTime = 0;
+			hole = { x: 425, y: 270, tx: 425, ty: 270, r: 19 };
+			items = []; for (let i = 0; i < 34; i++) addItem();
+			scoreEl.textContent = '0'; timerEl.textContent = '30';
+			overlay.classList.add('hidden'); playing = true; previousTime = performance.now();
+			requestAnimationFrame(frame);
+		});
+		for (let i = 0; i < 34; i++) addItem();
+		draw();
+	</script>
+</body>
+</html>
