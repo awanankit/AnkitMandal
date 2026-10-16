@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Phone Country Finder</title>
+	<style>
+		* { box-sizing: border-box }
+		body { min-height: 100vh; margin: 0; padding: 24px; display: grid; place-items: center; background: linear-gradient(135deg, #eaf2ff, #f8faff); color: #17233b; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+		main { width: min(100%, 540px); padding: 36px; background: white; border: 1px solid #e2e9f5; border-radius: 22px; box-shadow: 0 20px 60px #29467518; }
+		.globe { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 16px; background: #edf3ff; font-size: 26px; }
+		h1 { margin: 20px 0 8px; font-size: clamp(27px, 6vw, 34px); letter-spacing: -.6px; }
+		.description { margin: 0 0 26px; color: #66738a; line-height: 1.6; }
+		label { display: block; margin-bottom: 9px; font-size: 14px; font-weight: 650; }
+		.controls { display: flex; gap: 10px; }
+		input { min-width: 0; flex: 1; height: 52px; padding: 0 14px; border: 1px solid #d5deec; border-radius: 11px; font: inherit; font-size: 16px; outline: none; }
+		input:focus { border-color: #3970e8; box-shadow: 0 0 0 4px #3970e81c; }
+		button { padding: 0 17px; border: 0; border-radius: 11px; background: #3569df; color: white; font: inherit; font-weight: 650; cursor: pointer; }
+		button:hover { background: #2455c6; }
+		button:focus-visible, input:focus-visible { outline: 3px solid #3970e866; outline-offset: 2px; }
+		.secondary-button { border: 1px solid #d5deec; background: white; color: #34435e; }
+		.secondary-button:hover { background: #f3f6fc; }
+		.hint { margin: 9px 0 0; color: #7b879a; font-size: 13px; }
+		.examples { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 15px; color: #66738a; font-size: 13px; }
+		.example-button { padding: 6px 10px; border: 1px solid #dce5f2; border-radius: 8px; background: #fff; color: #3569df; font-size: 12px; }
+		.example-button:hover { background: #f0f5ff; }
+		#result { display: none; margin-top: 20px; padding: 16px; border-radius: 12px; background: #f0f5ff; }
+		#result.visible { display: block; }
+		#result.error { color: #a12e36; background: #fff1f1; }
+		.result-label { margin-bottom: 5px; color: #66738a; font-size: 13px; }
+		.country { font-size: 20px; font-weight: 700; }
+		.code { margin-top: 5px; color: #56647c; font-size: 14px; }
+		.result-details { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #dce5f2; }
+		.detail-label { color: #66738a; font-size: 12px; }
+		.detail-value { margin-top: 3px; font-weight: 650; overflow-wrap: anywhere; }
+		.result-actions { display: flex; gap: 8px; margin-top: 14px; }
+		.result-actions button { min-height: 40px; }
+		#copy-status { align-self: center; color: #34704a; font-size: 13px; }
+		.note { margin: 20px 0 0; color: #8791a2; font-size: 12px; line-height: 1.5; }
+		@media (max-width: 440px) { main { padding: 26px 20px; } .controls { flex-direction: column; } button { height: 49px; } }
+	</style>
+</head>
+<body>
+	<main>
+		<div class="globe" aria-hidden="true">🌍</div>
+		<h1>Phone Country Finder</h1>
+		<p class="description">Enter a mobile number with its international calling code to find the country or region it belongs to.</p>
+		<form id="lookup-form">
+			<label for="phone">Mobile number</label>
+			<div class="controls">
+				<input id="phone" type="tel" inputmode="tel" autocomplete="tel" aria-describedby="phone-hint" placeholder="e.g. +44 7700 900123" required>
+				<button type="submit">Find country</button>
+			</div>
+			<p class="hint" id="phone-hint">Include the + prefix, such as +1, +44, or +91. Spaces, hyphens, and parentheses are okay.</p>
+			<div class="examples" aria-label="Example numbers">
+				<span>Try an example:</span>
+				<button class="example-button" type="button" data-number="+1 202 555 0123">+1</button>
+				<button class="example-button" type="button" data-number="+44 7700 900123">+44</button>
+				<button class="example-button" type="button" data-number="+91 98765 43210">+91</button>
+			</div>
+		</form>
+		<section id="result" aria-live="polite" aria-atomic="true"></section>
+		<p class="note">This identifies the country calling code, not the caller’s current location. Some calling codes are shared by multiple countries.</p>
+	</main>
+	<script>
+		const callingCodes = {
+			"1": "United States, Canada, and other North American regions", "7": "Russia and Kazakhstan",
+			"20": "Egypt", "27": "South Africa", "30": "Greece", "31": "Netherlands", "32": "Belgium", "33": "France", "34": "Spain", "36": "Hungary", "39": "Italy and Vatican City", "40": "Romania", "41": "Switzerland", "43": "Austria", "44": "United Kingdom", "45": "Denmark", "46": "Sweden", "47": "Norway", "48": "Poland", "49": "Germany",
+			"51": "Peru", "52": "Mexico", "53": "Cuba", "54": "Argentina", "55": "Brazil", "56": "Chile", "57": "Colombia", "58": "Venezuela", "60": "Malaysia", "61": "Australia", "62": "Indonesia", "63": "Philippines", "64": "New Zealand", "65": "Singapore", "66": "Thailand",
+			"81": "Japan", "82": "South Korea", "84": "Vietnam", "86": "China", "90": "Turkey", "91": "India", "92": "Pakistan", "93": "Afghanistan", "94": "Sri Lanka", "95": "Myanmar", "98": "Iran",
+			"211": "South Sudan", "212": "Morocco and Western Sahara", "213": "Algeria", "216": "Tunisia", "218": "Libya", "220": "The Gambia", "221": "Senegal", "222": "Mauritania", "223": "Mali", "224": "Guinea", "225": "Côte d’Ivoire", "226": "Burkina Faso", "227": "Niger", "228": "Togo", "229": "Benin", "230": "Mauritius", "231": "Liberia", "232": "Sierra Leone", "233": "Ghana", "234": "Nigeria", "235": "Chad", "236": "Central African Republic", "237": "Cameroon", "238": "Cabo Verde", "239": "São Tomé and Príncipe", "240": "Equatorial Guinea", "241": "Gabon", "242": "Republic of the Congo", "243": "Democratic Republic of the Congo", "244": "Angola", "245": "Guinea-Bissau", "248": "Seychelles", "249": "Sudan", "250": "Rwanda", "251": "Ethiopia", "252": "Somalia", "253": "Djibouti", "254": "Kenya", "255": "Tanzania", "256": "Uganda", "257": "Burundi", "258": "Mozambique", "260": "Zambia", "261": "Madagascar", "263": "Zimbabwe", "264": "Namibia", "265": "Malawi", "266": "Lesotho", "267": "Botswana", "268": "Eswatini", "269": "Comoros",
+			"297": "Aruba", "298": "Faroe Islands", "299": "Greenland", "350": "Gibraltar", "351": "Portugal", "352": "Luxembourg", "353": "Ireland", "354": "Iceland", "355": "Albania", "356": "Malta", "357": "Cyprus", "358": "Finland", "359": "Bulgaria", "370": "Lithuania", "371": "Latvia", "372": "Estonia", "373": "Moldova", "374": "Armenia", "375": "Belarus", "376": "Andorra", "377": "Monaco", "378": "San Marino", "380": "Ukraine", "381": "Serbia", "382": "Montenegro", "385": "Croatia", "386": "Slovenia", "387": "Bosnia and Herzegovina", "389": "North Macedonia", "420": "Czechia", "421": "Slovakia", "423": "Liechtenstein",
+			"500": "Falkland Islands", "501": "Belize", "502": "Guatemala", "503": "El Salvador", "504": "Honduras", "505": "Nicaragua", "506": "Costa Rica", "507": "Panama", "509": "Haiti", "590": "Guadeloupe and Saint Martin", "591": "Bolivia", "592": "Guyana", "593": "Ecuador", "594": "French Guiana", "595": "Paraguay", "596": "Martinique", "597": "Suriname", "598": "Uruguay", "599": "Curaçao and Caribbean Netherlands",
+			"670": "Timor-Leste", "673": "Brunei", "674": "Nauru", "675": "Papua New Guinea", "676": "Tonga", "677": "Solomon Islands", "678": "Vanuatu", "679": "Fiji", "680": "Palau", "682": "Cook Islands", "685": "Samoa", "686": "Kiribati", "687": "New Caledonia", "688": "Tuvalu", "689": "French Polynesia", "690": "Tokelau", "691": "Micronesia", "692": "Marshall Islands",
+			"850": "North Korea", "852": "Hong Kong", "853": "Macau", "855": "Cambodia", "856": "Laos", "880": "Bangladesh", "886": "Taiwan", "960": "Maldives", "961": "Lebanon", "962": "Jordan", "963": "Syria", "964": "Iraq", "965": "Kuwait", "966": "Saudi Arabia", "967": "Yemen", "968": "Oman", "970": "Palestine", "971": "United Arab Emirates", "972": "Israel", "973": "Bahrain", "974": "Qatar", "975": "Bhutan", "976": "Mongolia", "977": "Nepal", "992": "Tajikistan", "993": "Turkmenistan", "994": "Azerbaijan", "995": "Georgia", "996": "Kyrgyzstan", "998": "Uzbekistan"
+		};
+
+		const form = document.getElementById("lookup-form");
+		const phoneInput = document.getElementById("phone");
+		const result = document.getElementById("result");
+		const allowedPhoneCharacters = /^[+\d\s().-]+$/;
+
+		function showError(title, message) {
+			result.className = "visible error";
+			result.textContent = "";
+			const heading = document.createElement("div");
+			heading.className = "country";
+			heading.textContent = title;
+			const detail = document.createElement("div");
+			detail.className = "code";
+			detail.textContent = message;
+			result.append(heading, detail);
+		}
+
+		form.addEventListener("submit", function (event) {
+			event.preventDefault();
+			let number = phoneInput.value.trim();
+			if (!allowedPhoneCharacters.test(number)) {
+				showError("Invalid characters", "Use digits, a leading +, spaces, parentheses, or hyphens.");
+				return;
+			}
+			if (number.startsWith("00")) number = "+" + number.slice(2);
+			const digits = number.replace(/\D/g, "");
+
+			if (!number.startsWith("+") || digits.length < 7 || digits.length > 15) {
+				showError("Enter a valid international number", "Start with + and the calling code; numbers must contain 7–15 digits.");
+				return;
+			}
+
+			let code = "";
+			for (let length = 3; length >= 1; length--) {
+				const candidate = digits.slice(0, length);
+				if (callingCodes[candidate]) { code = candidate; break; }
+			}
+			if (!code) {
+				showError("Calling code not found", "Check the number’s international prefix and try again.");
+				return;
+			}
+
+			const e164 = "+" + digits;
+			const localNumber = digits.slice(code.length);
+			result.className = "visible";
+			result.replaceChildren();
+			const label = document.createElement("div");
+			label.className = "result-label";
+			label.textContent = "Country or region";
+			const country = document.createElement("div");
+			country.className = "country";
+			country.textContent = callingCodes[code];
+			const callingCode = document.createElement("div");
+			callingCode.className = "code";
+			callingCode.textContent = "Calling code: +" + code;
+			const details = document.createElement("div");
+			details.className = "result-details";
+			details.innerHTML = '<div><div class="detail-label">Subscriber number</div><div class="detail-value"></div></div><div><div class="detail-label">International format</div><div class="detail-value"></div></div>';
+			details.children[0].querySelector(".detail-value").textContent = localNumber || "Not provided";
+			details.children[1].querySelector(".detail-value").textContent = e164;
+			const actions = document.createElement("div");
+			actions.className = "result-actions";
+			const copyButton = document.createElement("button");
+			copyButton.type = "button";
+			copyButton.className = "secondary-button";
+			copyButton.dataset.copy = e164;
+			copyButton.textContent = "Copy international number";
+			const copyStatus = document.createElement("span");
+			copyStatus.id = "copy-status";
+			copyStatus.setAttribute("role", "status");
+			actions.append(copyButton, copyStatus);
+			result.append(label, country, callingCode, details, actions);
+		});
+
+		document.querySelectorAll(".example-button").forEach(function (button) {
+			button.addEventListener("click", function () {
+				phoneInput.value = button.dataset.number;
+				phoneInput.focus();
+				form.requestSubmit();
+			});
+		});
+
+		result.addEventListener("click", async function (event) {
+			const button = event.target.closest("[data-copy]");
+			if (!button) return;
+			const status = document.getElementById("copy-status");
+			try {
+				await navigator.clipboard.writeText(button.dataset.copy);
+				status.textContent = "Copied";
+			} catch {
+				status.textContent = "Copy unavailable in this browser";
+			}
+		});
+	</script>
+</body>
+</html>
