@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Catch the Hens!</title>
+	<style>
+		* { box-sizing: border-box; }
+		body {
+			margin: 0; min-height: 100vh; display: grid; place-items: center;
+			padding: 20px; font-family: system-ui, sans-serif; text-align: center;
+			color: #382818; background: linear-gradient(#bde9ff 0 58%, #9bd66b 58%);
+		}
+		main { width: min(680px, 100%); }
+		h1 { margin: 0 0 6px; font-size: clamp(2rem, 7vw, 3rem); }
+		.hint { margin: 0 0 16px; }
+		.stats { display: flex; justify-content: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+		.stats span, #start {
+			padding: 10px 18px; border: 0; border-radius: 999px; background: #fff8e7;
+			box-shadow: 0 3px 0 #d5b77b; font-weight: 700;
+		}
+		#field {
+			position: relative; height: min(56vh, 390px); min-height: 260px; overflow: hidden;
+			border: 5px solid #fff8e7; border-radius: 22px;
+			background: linear-gradient(#c9efff 0 64%, #83c957 64%);
+			box-shadow: 0 10px 24px #41662c44; touch-action: manipulation;
+		}
+		.hen {
+			position: absolute; left: 50%; top: 50%; padding: 0; border: 0;
+			background: transparent; cursor: pointer; font-size: 50px; line-height: 1;
+			transform: translate(-50%, -50%); user-select: none;
+			transition: left .15s ease, top .15s ease, opacity .15s ease;
+			z-index: 2;
+		}
+		.hen:focus-visible { outline: 3px solid #8c4c13; border-radius: 12px; }
+		.hen.caught { opacity: 0; pointer-events: none; }
+		#cage {
+			position: absolute; right: 14px; bottom: 12px; width: 100px; height: 88px;
+			border: 5px solid #8c4c13; border-top-width: 9px; border-radius: 14px 14px 8px 8px;
+			background: repeating-linear-gradient(90deg, #f1c27d 0 8px, #8c4c13 8px 12px);
+			box-shadow: 0 4px 0 #69400f; color: #382818; cursor: pointer; font: 700 12px system-ui, sans-serif;
+			z-index: 3;
+		}
+		#cage::before { content: ''; position: absolute; left: 8px; right: 8px; top: -19px; height: 10px; background: #8c4c13; border-radius: 8px 8px 0 0; }
+		#cageHen { position: absolute; inset: 13px 0 auto; font-size: 30px; line-height: 1; }
+		#cage small { position: absolute; bottom: 3px; left: 0; right: 0; }
+		#cage:focus-visible { outline: 3px solid #cf7132; }
+		#message { min-height: 28px; margin: 14px 0 8px; font-weight: 700; }
+		#start { cursor: pointer; color: white; background: #cf7132; box-shadow: 0 3px 0 #93461d; }
+	</style>
+</head>
+<body>
+	<main>
+		<h1>🐔 Catch the Hens!</h1>
+		<p class="hint">Catch every hen, then cut the meat and sell it to earn money before 30 seconds run out.</p>
+		<div class="stats" aria-live="polite">
+			<span>Score: <b id="score">0</b></span>
+			<span>Money: <b id="money">$0</b></span>
+			<span>Time: <b id="time">30</b>s</span>
+		</div>
+		<div id="field" aria-label="Game field">
+			<button id="cage" aria-label="Cut the caught hens and sell the meat"><span id="cageHen" aria-hidden="true"></span><small>CAGE</small></button>
+		</div>
+		<p id="message">Press Start to play!</p>
+		<button id="start">Start Game</button>
+	</main>
+	<script>
+		const field = document.getElementById('field');
+		const cage = document.getElementById('cage');
+		const cageHen = document.getElementById('cageHen');
+		const scoreDisplay = document.getElementById('score');
+		const moneyDisplay = document.getElementById('money');
+		const timeDisplay = document.getElementById('time');
+		const message = document.getElementById('message');
+		const startButton = document.getElementById('start');
+		const totalHens = 8;
+		let hens = [];
+		let score = 0;
+		let money = 0;
+		let timeLeft = 30;
+		let timer;
+		let playing = false;
+
+		function randomPos(hen) {
+			const margin = 30;
+			const x = margin + Math.random() * Math.max(0, field.clientWidth - margin * 2 - 50);
+			const y = margin + Math.random() * Math.max(0, field.clientHeight - margin * 2 - 50);
+			hen.style.left = `${x}px`;
+			hen.style.top = `${y}px`;
+			hen.style.transform = `translate(-50%, -50%) scaleX(${Math.random() < 0.5 ? -1 : 1})`;
+		}
+
+		function createHens() {
+			const existing = [...field.querySelectorAll('.hen')];
+			existing.forEach((hen) => hen.remove());
+			hens = [];
+
+			for (let i = 0; i < totalHens; i++) {
+				const hen = document.createElement('button');
+				hen.type = 'button';
+				hen.className = 'hen';
+				hen.textContent = '🐔';
+				hen.setAttribute('aria-label', `Catch hen ${i + 1}`);
+				hen.addEventListener('click', () => {
+					if (!playing || hen.classList.contains('caught')) return;
+					hen.classList.add('caught');
+					hen.disabled = true;
+					score++;
+					scoreDisplay.textContent = score;
+					cageHen.textContent += '🐔';
+					message.textContent = score >= totalHens
+						? 'All hens caught! Click the cage to cut the meat and earn cash!'
+						: `Hen caught! ${totalHens - score} still running!`;
+				});
+				field.appendChild(hen);
+				hens.push(hen);
+				randomPos(hen);
+			}
+		}
+
+		function resetRound() {
+			score = 0;
+			scoreDisplay.textContent = '0';
+			cageHen.textContent = '';
+			hens.forEach((hen) => {
+				hen.classList.remove('caught');
+				hen.disabled = false;
+				randomPos(hen);
+			});
+		}
+
+		function endGame() {
+			playing = false;
+			clearInterval(timer);
+			message.textContent = `Time's up! You earned $${money} this round.`;
+			startButton.textContent = 'Play Again';
+		}
+
+		startButton.addEventListener('click', () => {
+			clearInterval(timer);
+			money = 0;
+			timeLeft = 30;
+			playing = true;
+			moneyDisplay.textContent = '$0';
+			timeDisplay.textContent = '30';
+			message.textContent = 'Catch every hen before the timer ends!';
+			startButton.textContent = 'Restart Game';
+			createHens();
+			resetRound();
+			timer = setInterval(() => {
+				timeLeft--;
+				timeDisplay.textContent = timeLeft;
+				if (timeLeft <= 0) endGame();
+			}, 1000);
+		});
+		cage.addEventListener('click', () => {
+			if (!playing || score <= 0) return;
+			const payout = score * 25;
+			money += payout;
+			moneyDisplay.textContent = `$${money}`;
+			message.textContent = `Cuts done! You sold the meat for $${payout}. Catch more hens!`;
+			resetRound();
+		});
+
+		window.addEventListener('resize', () => {
+			if (playing) {
+				hens.forEach((hen) => {
+					if (!hen.classList.contains('caught')) randomPos(hen);
+				});
+			}
+		});
+
+		createHens();
+	</script>
+</body>
+</html>
