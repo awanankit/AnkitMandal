@@ -1,0 +1,444 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>21KM Hand Racing</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+<style>
+* {box-sizing:border-box}
+body {
+ margin:0;
+ overflow:hidden;
+ background:#07121c;
+ color:white;
+ font-family:Arial,sans-serif;
+}
+canvas {
+ display:block;
+ width:100vw;
+ height:100vh;
+}
+#hud {
+ position:absolute;
+ top:15px;
+ left:15px;
+ display:flex;
+ gap:12px;
+ flex-wrap:wrap;
+ z-index:3;
+}
+.panel {
+ background:rgba(0,0,0,.7);
+ border:1px solid #36dfff;
+ border-radius:12px;
+ padding:12px 17px;
+ box-shadow:0 0 15px #00bfff55;
+}
+.panel strong {color:#34eaff}
+#controls {
+ position:absolute;
+ bottom:15px;
+ left:50%;
+ transform:translateX(-50%);
+ text-align:center;
+ background:#000a;
+ padding:12px 20px;
+ border-radius:12px;
+ width:max-content;
+ max-width:95%;
+}
+button {
+ background:#00bfff;
+ color:#00121b;
+ border:0;
+ border-radius:8px;
+ padding:12px 22px;
+ font-weight:bold;
+ cursor:pointer;
+ margin:4px;
+}
+#camera {
+ position:absolute;
+ right:15px;
+ bottom:100px;
+ width:180px;
+ height:135px;
+ object-fit:cover;
+ border:2px solid #00dfff;
+ border-radius:12px;
+ transform:scaleX(-1);
+}
+#startScreen {
+ position:absolute;
+ inset:0;
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ background:linear-gradient(135deg,#03111e,#102e45);
+ z-index:5;
+ text-align:center;
+}
+#startScreen div {
+ padding:30px;
+ border:1px solid #00cfff;
+ border-radius:20px;
+ background:#061827;
+ box-shadow:0 0 35px #00bfff55;
+ width:90%;
+ max-width:450px;
+}
+h1 {color:#36eaff}
+</style>
+</head>
+
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="hud">
+ <div class="panel">SPEED<br><strong id="speed">0 KM/H</strong></div>
+ <div class="panel">DISTANCE<br><strong id="distance">0.00 KM</strong></div>
+ <div class="panel">RACE TRACK<br><strong>21 KM</strong></div>
+ <div class="panel">POSITION<br><strong id="position">1 / 3</strong></div>
+</div>
+
+<video id="camera" autoplay playsinline muted></video>
+
+<div id="controls">
+ <div id="status">Keyboard: Arrow keys / WASD</div>
+ <button onclick="startCamera()">ENABLE HAND CONTROL</button>
+</div>
+
+<div id="startScreen">
+ <div>
+  <h1>🏎️ 21 KM RACING</h1>
+  <h3>HAND CONTROL CHAMPIONSHIP</h3>
+  <p>Drive through a challenging mountain racing track.</p>
+  <p>Reach the finish line before your opponents!</p>
+  <button onclick="beginGame()">START RACE</button>
+ </div>
+</div>
+
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+
+let W,H;
+function resize(){
+ W=canvas.width=innerWidth;
+ H=canvas.height=innerHeight;
+}
+resize();
+window.addEventListener("resize",resize);
+
+let running=false;
+let speed=0;
+let distance=0;
+let playerX=0;
+let steering=0;
+let throttle=false;
+let handEnabled=false;
+let handX=.5;
+let opponents=[0,0,0];
+let roadCurve=0;
+let frame=0;
+
+const keys={};
+
+window.addEventListener("keydown",e=>{
+ keys[e.key.toLowerCase()]=true;
+});
+window.addEventListener("keyup",e=>{
+ keys[e.key.toLowerCase()]=false;
+});
+
+function beginGame(){
+ document.getElementById("startScreen").style.display="none";
+ running=true;
+}
+
+async function startCamera(){
+ const video=document.getElementById("camera");
+ document.getElementById("status").innerText="Starting camera...";
+ try{
+  const hands=new Hands({
+   locateFile:file=>
+    `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+  });
+
+  hands.setOptions({
+   maxNumHands:1,
+   modelComplexity:1,
+   minDetectionConfidence:.65,
+   minTrackingConfidence:.65
+  });
+
+  hands.onResults(results=>{
+   if(results.multiHandLandmarks &&
+      results.multiHandLandmarks.length){
+    const hand=results.multiHandLandmarks[0];
+    handX=hand[8].x;
+
+    const thumb=hand[4];
+    const index=hand[8];
+
+    const pinch=Math.hypot(
+     thumb.x-index.x,
+     thumb.y-index.y
+    );
+
+    throttle=pinch<.075;
+    steering=(.5-handX)*2.4;
+
+    document.getElementById("status").innerText=
+     throttle?"HAND: ACCELERATING":"HAND: STEERING";
+   }
+  });
+
+  const camera=new Camera(video,{
+   onFrame:async()=>await hands.send({image:video}),
+   width:640,
+   height:480
+  });
+
+  await camera.start();
+  handEnabled=true;
+  document.getElementById("status").innerText="HAND CONTROL ACTIVE";
+ }catch(e){
+  document.getElementById("status").innerText=
+   "Camera unavailable. Use keyboard controls.";
+ }
+}
+
+function polygon(points,color){
+ ctx.fillStyle=color;
+ ctx.beginPath();
+ ctx.moveTo(points[0][0],points[0][1]);
+ for(let i=1;i<points.length;i++)
+  ctx.lineTo(points[i][0],points[i][1]);
+ ctx.closePath();
+ ctx.fill();
+}
+
+function drawSky(){
+ let g=ctx.createLinearGradient(0,0,0,H*.65);
+ g.addColorStop(0,"#06182e");
+ g.addColorStop(.55,"#1680a5");
+ g.addColorStop(1,"#b6e3d6");
+ ctx.fillStyle=g;
+ ctx.fillRect(0,0,W,H);
+
+ ctx.fillStyle="#fff2a8";
+ ctx.beginPath();
+ ctx.arc(W*.8,H*.17,40,0,Math.PI*2);
+ ctx.fill();
+
+ polygon([
+ [0,H*.53],[W*.2,H*.2],[W*.38,H*.53],
+ [W*.58,H*.25],[W*.8,H*.55],[W,H*.28],
+ [W,H*.65],[0,H*.65]
+ ],"#304b62");
+
+ polygon([
+ [0,H*.56],[W*.28,H*.35],[W*.48,H*.58],
+ [W*.72,H*.34],[W,H*.59],[W,H*.68],[0,H*.68]
+ ],"#183c38");
+
+ ctx.fillStyle="#235e36";
+ ctx.fillRect(0,H*.58,W,H*.42);
+}
+
+function drawRoad(){
+ const horizon=H*.43;
+ const bottom=H;
+ const center=W/2;
+
+ for(let i=0;i<65;i++){
+  let p=i/65;
+  let y=horizon+(bottom-horizon)*p;
+  let next=horizon+(bottom-horizon)*(i+1)/65;
+  let roadWidth=30+W*.82*p;
+  let curve=Math.sin(frame*.006+p*4)*W*.13*p;
+  let c=center+curve-playerX*W*.22*p;
+
+  let rw2=30+W*.82*(i+1)/65;
+  let c2=center+Math.sin(frame*.006+(i+1)/65*4)*W*.13*(i+1)/65-playerX*W*.22*(i+1)/65;
+
+  ctx.fillStyle=i%2?"#d8d8d8":"#d22c36";
+  polygon([
+   [c-roadWidth/2-7*p,y],
+   [c+roadWidth/2+7*p,y],
+   [c2+rw2/2+7*(i+1)/65,next],
+   [c2-rw2/2-7*(i+1)/65,next]
+  ],ctx.fillStyle);
+
+  polygon([
+   [c-roadWidth/2,y],
+   [c+roadWidth/2,y],
+   [c2+rw2/2,next],
+   [c2-rw2/2,next]
+  ],"#343b45");
+
+  if(i%8<4){
+   let lw=2+8*p;
+   ctx.fillStyle="#fff";
+   polygon([
+    [c-lw/2,y],[c+lw/2,y],
+    [c2+lw/2,next],[c2-lw/2,next]
+   ],"#fff");
+  }
+ }
+}
+
+function drawCar(x,y,scale,color,isPlayer=false){
+ ctx.save();
+ ctx.translate(x,y);
+ ctx.scale(scale,scale);
+
+ // shadow
+ ctx.fillStyle="#0008";
+ ctx.beginPath();
+ ctx.ellipse(0,5,48,14,0,0,Math.PI*2);
+ ctx.fill();
+
+ // wheels
+ ctx.fillStyle="#090c11";
+ ctx.fillRect(-43,-16,13,35);
+ ctx.fillRect(30,-16,13,35);
+
+ // body
+ polygon([
+ [-38,15],[-35,-13],[-24,-35],
+ [-14,-51],[14,-51],[26,-35],
+ [37,-13],[40,15],[27,25],[-27,25]
+ ],color);
+
+ // windshield
+ polygon([
+ [-24,-31],[-13,-47],[13,-47],[24,-31],
+ [17,-17],[-17,-17]
+ ],"#8feaff");
+
+ ctx.fillStyle="#ff3434";
+ ctx.fillRect(-30,5,12,5);
+ ctx.fillRect(18,5,12,5);
+
+ ctx.fillStyle="#fff";
+ ctx.fillRect(-8,18,16,3);
+
+ ctx.restore();
+}
+
+function drawScenery(){
+ for(let i=0;i<20;i++){
+  let p=((i/20+frame*.001)%1);
+  let y=H*.43+(H*.57)*p;
+  let x=W*.5+Math.sin(frame*.006+p*4)*W*.13*p;
+  let size=10+75*p;
+  for(let side of [-1,1]){
+   let tx=x+side*(W*.08+W*.5*p);
+   ctx.fillStyle="#573d29";
+   ctx.fillRect(tx-size*.1,y-size*.5,size*.2,size*.8);
+   ctx.fillStyle="#12613b";
+   ctx.beginPath();
+   ctx.moveTo(tx,y-size*1.6);
+   ctx.lineTo(tx-size*.65,y-size*.3);
+   ctx.lineTo(tx+size*.65,y-size*.3);
+   ctx.fill();
+  }
+ }
+}
+
+function update(){
+ if(!running)return;
+
+ frame++;
+
+ let left=keys["arrowleft"]||keys["a"];
+ let right=keys["arrowright"]||keys["d"];
+ let accelerate=keys["arrowup"]||keys["w"]||throttle;
+ let brake=keys["arrowdown"]||keys["s"];
+
+ if(!handEnabled){
+  steering=(right?1:0)-(left?1:0);
+ }
+
+ if(accelerate)speed+=.35;
+ else speed-=.12;
+
+ if(brake)speed-=.65;
+
+ speed=Math.max(0,Math.min(300,speed));
+
+ playerX+=steering*.018*(.5+speed/150);
+ playerX*=.985;
+ playerX=Math.max(-1.4,Math.min(1.4,playerX));
+
+ if(Math.abs(playerX)>1.05)speed*=.985;
+
+ distance+=speed/3600/60*5;
+
+ opponents[0]+=.00013;
+ opponents[1]+=.000115;
+ opponents[2]+=.00010;
+
+ // Keep race within 21 km
+ distance=Math.min(distance,21);
+
+ document.getElementById("speed").innerText=
+ Math.round(speed)+" KM/H";
+
+ document.getElementById("distance").innerText=
+ distance.toFixed(2)+" KM";
+
+ let pos=1+opponents.filter(v=>v>distance/21).length;
+ document.getElementById("position").innerText=
+ Math.min(3,pos)+" / 3";
+
+ if(distance>=21){
+  running=false;
+  document.getElementById("status").innerText=
+   "🏁 FINISH LINE REACHED!";
+ }
+}
+
+function render(){
+ drawSky();
+ drawScenery();
+ drawRoad();
+
+ // Rival cars
+ for(let i=0;i<2;i++){
+  let p=.25+i*.18;
+  let x=W/2+(i===0?-1:1)*W*.19+
+  Math.sin(frame*.01+i)*W*.04;
+  drawCar(x,H*.75,0.55,"#e9a322");
+ }
+
+ // Player
+ drawCar(
+  W/2+playerX*W*.28,
+  H*.86,
+  1.25,
+  "#05c9ff",
+  true
+ );
+
+ requestAnimationFrame(render);
+}
+
+function loop(){
+ update();
+ requestAnimationFrame(loop);
+}
+
+render();
+loop();
+</script>
+</body>
+</html>
